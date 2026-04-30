@@ -1,8 +1,7 @@
-streamlit==1.32.0
-opencv-python-headless==4.9.0.80
-deepface==0.0.93
-matplotlib==3.8.3
-numpy==1.26.4
-pillow==10.2.0
-google-api-python-client==2.118.0
-tensorflow-cpu==2.15.0
+streamlit
+fer
+opencv-python-headless
+matplotlib
+numpy
+pillow
+google-api-python-client
