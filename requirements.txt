@@ -1,0 +1,9 @@
+streamlit
+opencv-python-headless
+deepface
+tf_keras
+tensorflow
+google-api-python-client
+matplotlib
+numpy
+pillow
