@@ -11,7 +11,7 @@ from PIL import Image
 # ─────────────────────────────────────────
 import os
 API_KEY = os.getenv("YOUTUBE_API_KEY")
-# API_KEY = "AIzaSyAuNDwNbbk29vxtN1foHMGGJqcu9vr0mlc"
+
 
 emotion_to_query = {
     "happy":    "happy upbeat pop music",
