@@ -1,20 +1,13 @@
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import streamlit as st
 import cv2
-from deepface import DeepFace
 import matplotlib.pyplot as plt
+from fer import FER
 from googleapiclient.discovery import build
 import numpy as np
 from PIL import Image
 
-# ─────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────
-import os
 API_KEY = os.getenv("YOUTUBE_API_KEY")
-
 
 emotion_to_query = {
     "happy":    "happy upbeat pop music",
@@ -46,19 +39,14 @@ emotion_color = {
     "disgust":  "#228B22"
 }
 
-# ─────────────────────────────────────────
-# PAGE SETUP
-# ─────────────────────────────────────────
 st.set_page_config(
     page_title="Emotion Music Generator",
     page_icon="🎵",
     layout="centered"
 )
 
-# Custom CSS
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
     .title {
         text-align: center;
         font-size: 42px;
@@ -73,14 +61,6 @@ st.markdown("""
         font-size: 16px;
         margin-bottom: 30px;
     }
-    .emotion-box {
-        text-align: center;
-        padding: 20px;
-        border-radius: 15px;
-        margin: 20px 0;
-        font-size: 28px;
-        font-weight: bold;
-    }
     .song-card {
         background-color: #1e1e2e;
         padding: 15px;
@@ -91,108 +71,103 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────
-# HEADER
-# ─────────────────────────────────────────
 st.markdown('<p class="title">🎵 Emotion Music Generator</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Your face picks the music. No playlist needed.</p>', unsafe_allow_html=True)
 st.divider()
 
-# ─────────────────────────────────────────
-# FUNCTIONS
-# ─────────────────────────────────────────
 def detect_emotion(frame):
     try:
-        result = DeepFace.analyze(
-            frame,
-            actions=['emotion'],
-            enforce_detection=False
-        )
-        return result[0]['dominant_emotion'], result[0]['emotion']
+        detector = FER(mtcnn=False)
+        result = detector.detect_emotions(frame)
+        if result:
+            emotions = result[0]['emotions']
+            dominant = max(emotions, key=emotions.get)
+            return dominant, emotions
+        return "neutral", {}
     except:
         return "neutral", {}
 
 def get_songs(emotion):
-    youtube = build("youtube", "v3", developerKey=API_KEY)
-    query = emotion_to_query.get(emotion, "relaxing music")
-    request = youtube.search().list(
-        part="snippet",
-        q=query,
-        type="video",
-        maxResults=5,
-        videoCategoryId="10"
-    )
-    response = request.execute()
-    songs = []
-    for item in response["items"]:
-        songs.append({
-            "title":   item["snippet"]["title"].replace("&#39;", "'").replace("&amp;", "&"),
-            "channel": item["snippet"]["channelTitle"],
-            "url":     f"https://www.youtube.com/watch?v={item['id']['videoId']}"
-        })
-    return songs
+    try:
+        youtube = build("youtube", "v3", developerKey=API_KEY)
+        query = emotion_to_query.get(emotion, "relaxing music")
+        request = youtube.search().list(
+            part="snippet",
+            q=query,
+            type="video",
+            maxResults=5,
+            videoCategoryId="10"
+        )
+        response = request.execute()
+        songs = []
+        for item in response["items"]:
+            songs.append({
+                "title":   item["snippet"]["title"].replace("&#39;", "'").replace("&amp;", "&"),
+                "channel": item["snippet"]["channelTitle"],
+                "url":     f"https://www.youtube.com/watch?v={item['id']['videoId']}"
+            })
+        return songs
+    except:
+        return []
 
-# ─────────────────────────────────────────
-# WEBCAM CAPTURE
-# ─────────────────────────────────────────
 st.subheader("📸 Step 1 — Capture Your Face")
 img_file = st.camera_input("Look at the camera and click!")
 
 if img_file is not None:
-
-    # Convert to OpenCV format
     image = Image.open(img_file)
     frame = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-    # ── Detect Emotion ──
     with st.spinner("🔍 Analyzing your emotion..."):
         dominant_emotion, all_emotions = detect_emotion(frame)
 
     emoji = emotion_emoji.get(dominant_emotion, "😐")
     color = emotion_color.get(dominant_emotion, "#888")
 
-    # ── Show Emotion ──
     st.divider()
     st.subheader("🧠 Step 2 — Your Emotion")
     st.markdown(
-        f'<div class="emotion-box" style="background-color:{color}22; border: 2px solid {color};">'
+        f'<div style="text-align:center; padding:20px; border-radius:15px; '
+        f'background-color:{color}22; border: 2px solid {color}; '
+        f'font-size:28px; font-weight:bold;">'
         f'{emoji} You look <span style="color:{color}">{dominant_emotion.upper()}</span> right now!'
         f'</div>',
         unsafe_allow_html=True
     )
 
-    # ── Emotion Chart ──
-    fig, ax = plt.subplots(figsize=(8, 3))
-    fig.patch.set_facecolor('#0e1117')
-    ax.set_facecolor('#0e1117')
-    emotions = list(all_emotions.keys())
-    scores = list(all_emotions.values())
-    bar_colors = [color if e == dominant_emotion else '#444' for e in emotions]
-    ax.barh(emotions, scores, color=bar_colors)
-    ax.set_xlabel('Confidence %', color='white')
-    ax.tick_params(colors='white')
-    ax.spines['bottom'].set_color('#444')
-    ax.spines['left'].set_color('#444')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    st.pyplot(fig)
+    if all_emotions:
+        fig, ax = plt.subplots(figsize=(8, 3))
+        fig.patch.set_facecolor('#0e1117')
+        ax.set_facecolor('#0e1117')
+        emotions = list(all_emotions.keys())
+        scores = list(all_emotions.values())
+        bar_colors = [color if e == dominant_emotion else '#444' for e in emotions]
+        ax.barh(emotions, scores, color=bar_colors)
+        ax.set_xlabel('Confidence', color='white')
+        ax.tick_params(colors='white')
+        ax.spines['bottom'].set_color('#444')
+        ax.spines['left'].set_color('#444')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        st.pyplot(fig)
 
-    # ── Get Songs ──
     st.divider()
     st.subheader("🎵 Step 3 — Your Mood Playlist")
 
     with st.spinner("🎵 Finding perfect songs for you..."):
         songs = get_songs(dominant_emotion)
 
-    for i, song in enumerate(songs, 1):
-        st.markdown(
-            f'<div class="song-card">'
-            f'<b>{i}. {song["title"]}</b><br>'
-            f'<small>📺 {song["channel"]}</small><br>'
-            f'<a href="{song["url"]}" target="_blank">▶️ Play on YouTube</a>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
+    if songs:
+        for i, song in enumerate(songs, 1):
+            st.markdown(
+                f'<div class="song-card">'
+                f'<b>{i}. {song["title"]}</b><br>'
+                f'<small>📺 {song["channel"]}</small><br>'
+                f'<a href="{song["url"]}" target="_blank">▶️ Play on YouTube</a>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+    else:
+        st.error("Could not fetch songs. Check your API key in secrets.")
 
     st.divider()
     st.success("✅ Done! Enjoy your music! 🎧")
