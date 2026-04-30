@@ -1,3 +1,6 @@
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import streamlit as st
 import cv2
 from deepface import DeepFace
