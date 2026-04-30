@@ -1,9 +1,9 @@
 streamlit
 opencv-python-headless
 deepface
-tf_keras
-tensorflow
+tf-keras
 google-api-python-client
 matplotlib
 numpy
 pillow
+flask
