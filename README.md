@@ -51,4 +51,4 @@ streamlit run app.py
 - Phase 5: Live deployment via ngrok
 
 ## Author
-Himanshi — [LinkedIn](www.linkedin.com/in/himanshi-rathore-hr2520)
+Himanshi — [LinkedIn](https://www.linkedin.com/in/himanshi-rathore-hr2520/)
